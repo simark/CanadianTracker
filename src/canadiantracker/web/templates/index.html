@@ -7,14 +7,15 @@
     <script>
         $(document).ready(function () {
             $('#product-table').DataTable({
-                ajax: { url: '/api/products', dataSrc: '' },
+                ajax: { url: '/api/products' },
+                serverSide: true,
                 columns: [
                     {
                         data: 'name',
                         title: 'Name',
                         render: (data, type, row, meta) => {
                             return '<a href="/products/' + row.code + '">' + data + '</a>';
-                        }
+                        },
                     },
                     {
                         data: 'code',

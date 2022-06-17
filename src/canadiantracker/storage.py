@@ -1,3 +1,4 @@
+from typing import List
 import sqlalchemy
 import sqlalchemy.orm
 import canadiantracker.model
@@ -85,6 +86,11 @@ class ProductRepository:
 
     @property
     def products(self) -> Iterator[canadiantracker.model.ProductListingEntry]:
+        raise NotImplementedError
+
+    def query(
+        columns: List[str],
+    ) -> Iterator[canadiantracker.model.ProductListingEntry]:
         raise NotImplementedError
 
     def get_product_listing_by_code(
