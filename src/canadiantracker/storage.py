@@ -6,6 +6,9 @@ import os
 import datetime
 from collections.abc import Iterator
 import logging
+import pyzstd
+from importlib import resources
+from canadiantracker import compression
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +102,7 @@ class _StorageProductSample(sqlalchemy_base):
     price = sqlalchemy.Column(sqlalchemy.Numeric, nullable=False)
     in_promo = sqlalchemy.Column(sqlalchemy.Boolean, nullable=False)
     raw_payload = sqlalchemy.Column(sqlalchemy.String, nullable=True)
+    raw_payload_compressed = sqlalchemy.Column(sqlalchemy.LargeBinary, nullable=True)
 
     sku = sqlalchemy.orm.relationship("_StorageSku", back_populates="samples")
 
@@ -111,7 +115,7 @@ class _StorageProductSample(sqlalchemy_base):
     ):
         self.price = price
         self.in_promo = in_promo
-        self.raw_payload = str(raw_payload)
+        self.raw_payload_compressed = compression.zstd_compress(str(raw_payload).encode())
         self.sample_time = datetime.datetime.now()
         self.sku = sku
 
@@ -172,7 +176,7 @@ class InvalidDatabaseRevisionException(Exception):
 
 
 class _SQLite3ProductRepository(ProductRepository):
-    ALEMBIC_REVISION = "9169a7c5bda3"
+    ALEMBIC_REVISION = "058f001e9563"
 
     def __init__(self, path: str):
         db_url = "sqlite:///" + os.path.abspath(path)
