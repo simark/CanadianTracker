@@ -23,3 +23,5 @@ jobs:
         run: poetry run black --check --diff .
       - name: flake8
         run: poetry run flake8 --suppress-none-returning --suppress-dummy-args .
+      - name: isort
+        run: poetry run isort --check .
