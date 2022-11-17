@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import datetime
 import decimal
-from typing import Iterable
 
 
 class ProductInfo:
@@ -37,14 +36,11 @@ class ProductInfo:
 
 
 class Product:
-    def __init__(
-        self, code: str, name: str, is_in_clearance: bool, url: str, skus: list[Sku]
-    ):
+    def __init__(self, code: str, name: str, is_in_clearance: bool, url: str):
         self._code = code
         self._name = name
         self._is_in_clearance = is_in_clearance
         self._url = url
-        self._skus = skus
 
     def __str__(self) -> str:
         return "[{code}] {name}".format(code=self._code, name=self._name)
@@ -64,10 +60,6 @@ class Product:
     @property
     def url(self) -> str:
         return self._url
-
-    @property
-    def skus(self) -> Iterable[Sku]:
-        return self._skus
 
     def __repr__(self):
         props = {
