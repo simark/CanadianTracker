@@ -4,7 +4,8 @@ import sys
 
 import click
 
-from canadiantracker import cli_utils, model
+from canadiantracker import model
+from canadiantracker.cli import utils
 
 logger = logging.getLogger(__name__)
 
@@ -45,9 +46,7 @@ def price_history(db_path: str, format: str, sku_code: str):
     """
     Fetch SKU properties.
     """
-    repository = cli_utils.get_product_repository_from_sqlite_file_check_version(
-        db_path
-    )
+    repository = utils.get_product_repository_from_sqlite_file_check_version(db_path)
 
     sku = repository.get_sku_by_formatted_code(sku_code)
     if sku is None:

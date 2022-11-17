@@ -3,11 +3,12 @@ import re
 import signal
 import sys
 import textwrap
-from canadiantracker import cli_utils
-from canadiantracker import triangle, model
 from types import FrameType
 
 import click
+
+from canadiantracker import model, triangle
+from canadiantracker.cli import utils
 
 logger = logging.getLogger(__name__)
 
@@ -109,9 +110,7 @@ def scrape_inventory(
     if category_levels is not None:
         category_levels = [int(x) for x in category_levels.split(",")]
 
-    repository = cli_utils.get_product_repository_from_sqlite_file_check_version(
-        db_path
-    )
+    repository = utils.get_product_repository_from_sqlite_file_check_version(db_path)
     inventory = triangle.ProductInventory(
         category_levels_to_scrape=category_levels,
         dev_max_categories=dev_max_categories,
@@ -165,9 +164,7 @@ def scrape_prices(db_path: str, older_than: int, discard_equal: bool):
     """
     Fetch current product prices.
     """
-    repository = cli_utils.get_product_repository_from_sqlite_file_check_version(
-        db_path
-    )
+    repository = utils.get_product_repository_from_sqlite_file_check_version(db_path)
 
     progress_bar_settings = {
         "label": "Scraping prices",
@@ -199,10 +196,8 @@ def scrape_prices(db_path: str, older_than: int, discard_equal: bool):
     metavar="PATH",
     help="Path to sqlite db instance",
 )
-def prune_samples(db_path: str):
-    repository = cli_utils.get_product_repository_from_sqlite_file_check_version(
-        db_path
-    )
+def prune_samples(db_path: str) -> None:
+    repository = utils.get_product_repository_from_sqlite_file_check_version(db_path)
     n_deleted = 0
     quit = False
 
