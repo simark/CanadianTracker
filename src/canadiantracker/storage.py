@@ -5,6 +5,7 @@ import decimal
 import logging
 import os
 from collections.abc import Iterator
+from typing import Iterable
 
 import sqlalchemy
 from sqlalchemy import orm
@@ -187,9 +188,13 @@ class ProductRepository:
         if hasattr(self, "_session"):
             self._session.commit()
 
-    @property
-    def products(self) -> Iterator[model.Product]:
-        return self._session.query(_StorageProduct)
+    def products(self, codes: Iterable[str] | None = None) -> Iterator[model.Product]:
+        q = self._session.query(_StorageProduct)
+
+        if codes is not None:
+            q = q.filter(_StorageProduct.code.in_(codes))
+
+        return q
 
     @property
     def skus(self) -> Iterator[model.Sku]:
@@ -216,7 +221,7 @@ class ProductRepository:
         self._session.execute("VACUUM")
 
     def get_product_by_code(self, product_id: str) -> model.Product:
-        result = self.products.filter(_StorageProduct.code == product_id)
+        result = self.products().filter(_StorageProduct.code == product_id)
         return result.first() if result else None
 
     def get_sku_by_code(self, code: str) -> _StorageSku:
