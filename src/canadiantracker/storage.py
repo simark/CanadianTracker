@@ -53,6 +53,10 @@ class _StorageProduct(_Base):
 
     skus: Mapped[list[_StorageSku]] = relationship(back_populates="product")
 
+    sku_options: Mapped[list[_StorageSkuOption]] = relationship(
+        back_populates="product"
+    )
+
     def __init__(self, name: str, code: str, is_in_clearance: bool, url: str):
         self.name = name
         self.code = code
@@ -94,6 +98,75 @@ class _StorageSku(_Base):
                     f"code={self.code}",
                     f"formatted_code={self.formatted_code}",
                     f"product_index={self.product_index}",
+                ]
+            )
+            + ")"
+        )
+
+
+class _StorageSkuOption(_Base):
+    __tablename__ = "sku_options"
+
+    index: Mapped[int] = mapped_column(primary_key=True)
+    product_index: Mapped[int] = mapped_column(
+        sqlalchemy.ForeignKey("products_static.index")
+    )
+    descriptor: Mapped[str]
+    display: Mapped[str]
+
+    product: Mapped[_StorageProduct] = relationship(back_populates="sku_options")
+    values: Mapped[list[_StorageSkuOptionValue]] = relationship(back_populates="option")
+
+    def __init__(self, product: _StorageProduct, descriptor: str, display: str):
+        assert product is not None
+        assert descriptor is not None
+        assert display is not None
+        self.product = product
+        self.descriptor = descriptor
+        self.display = display
+
+    def __repr__(self):
+        return (
+            "_StorageSkuOption("
+            + ", ".join(
+                [
+                    f"product_index={self.product_index}",
+                    f"descriptor={self.descriptor}",
+                    f"display={self.display}",
+                ]
+            )
+            + ")"
+        )
+
+
+class _StorageSkuOptionValue(_Base):
+    __tablename__ = "sku_option_values"
+
+    index: Mapped[int] = mapped_column(primary_key=True)
+    sku_option_index: Mapped[int] = mapped_column(
+        sqlalchemy.ForeignKey("sku_options.index")
+    )
+    value: Mapped[str]
+    id: Mapped[int]
+
+    option: Mapped[_StorageSkuOption] = relationship(back_populates="values")
+
+    def __init__(self, option: _StorageSkuOption, value: str, id: int):
+        assert option is not None
+        assert value is not None
+        assert id is not None
+        self.option = option
+        self.value = value
+        self.id = id
+
+    def __repr__(self):
+        return (
+            "_StorageSkuOptionValue("
+            + ", ".join(
+                [
+                    f"sku_option_index={self.sku_option_index}",
+                    f"value={self.value}",
+                    f"id={self.id}",
                 ]
             )
             + ")"
@@ -157,7 +230,7 @@ class InvalidDatabaseRevisionException(Exception):
 
 
 class ProductRepository:
-    ALEMBIC_REVISION = "ac8256c291d4"
+    ALEMBIC_REVISION = "28ab11fa4c2c"
 
     def __init__(self, path: str):
         db_url = "sqlite:///" + os.path.abspath(path)
@@ -273,9 +346,114 @@ class ProductRepository:
             if entry.is_in_clearance != product.is_in_clearance:
                 entry.is_in_clearance = product.is_in_clearance
 
+    def sku_options(self, product: model.Product) -> Iterator[model.SkuOption]:
+        product_row = (
+            self._session.query(_StorageProduct)
+            .filter(_StorageProduct.code == product.code)
+            .one_or_none()
+        )
+        if product_row is None:
+            raise RuntimeError(f"Product with code {product.code} not found in storage")
+
+        option_rows: Iterator[_StorageSkuOption] = self._session.query(
+            _StorageSkuOption
+        ).filter(_StorageSkuOption.product_index == product_row.index)
+
+        options = []
+        for option_row in option_rows:
+            value_rows = self._session.query(_StorageSkuOptionValue).filter(
+                _StorageSkuOptionValue.sku_option_index == option_row.index
+            )
+
+            values = []
+            for value_row in value_rows:
+                values.append(model.SkuOptionValue(value_row.id, value_row.value))
+
+            options.append(
+                model.SkuOption(option_row.descriptor, option_row.display, values)
+            )
+
+        return options
+
+    @staticmethod
+    def compare_options(
+        user_options: list[model.SkuOption],
+        storage_options: list[_StorageSkuOption],
+    ) -> bool:
+        if len(user_options) != len(storage_options):
+            return False
+
+        user_options = sorted(user_options, key=lambda x: x.descriptor)
+        storage_options = sorted(storage_options, key=lambda x: x.descriptor)
+
+        for user_option, storage_option in zip(user_options, storage_options):
+            if (
+                user_option.descriptor != storage_option.descriptor
+                or user_option.display != storage_option.display
+            ):
+                return False
+
+            user_values = user_option.values
+            storage_values = storage_option.values
+
+            if len(user_values) != len(storage_values):
+                return False
+
+            user_values = sorted(user_values, key=lambda x: x.id)
+            storage_values = sorted(storage_values, key=lambda x: x.id)
+
+            for user_value, storage_value in zip(user_values, storage_values):
+                if (
+                    user_value.id != storage_value.id
+                    or user_value.value != storage_value.value
+                ):
+                    return False
+
+        return True
+
+    def set_sku_options(
+        self,
+        product: model.Product,
+        options: list[model.SkuOption],
+    ) -> None:
+        logger.debug(f"Set SKU options for product {product.code}")
+        product_row = (
+            self._session.query(_StorageProduct)
+            .filter(_StorageProduct.code == product.code)
+            .one_or_none()
+        )
+        if product_row is None:
+            raise RuntimeError(f"Product with code {product.code} not found in storage")
+
+        storage_options: list[_StorageSkuOption] = (
+            self._session.query(_StorageSkuOption)
+            .filter(_StorageSkuOption.product == product_row)
+            .all()
+        )
+
+        if ProductRepository.compare_options(options, storage_options):
+            logger.debug("    All equal")
+            return
+
+        logger.debug("    Not equal, adding")
+        for storage_option in storage_options:
+            for storage_value in storage_option.values:
+                self._session.delete(storage_value)
+
+            self._session.delete(storage_option)
+
+        for option in options:
+            option_row = _StorageSkuOption(product, option.descriptor, option.display)
+            self._session.add(option_row)
+
+            for value in option.values:
+                self._session.add(
+                    _StorageSkuOptionValue(option_row, value.value, value.id)
+                )
+
     def add_sku(
         self,
-        product: model.ProductListingEntry,
+        product: model.Product,
         sku: model.Sku,
     ) -> None:
         sku_entry: _StorageSku | None = (
@@ -285,7 +463,7 @@ class ProductRepository:
         if sku_entry is None:
             logger.debug(f"  SKU {sku.code} not present in storage, adding")
             # Create a new sku entry.
-            product_entry = self.get_product_listing_by_code(product.code)
+            product_entry = self.get_product_by_code(product.code)
             assert product_entry is not None
             self._session.add(_StorageSku(sku.code, sku.formatted_code, product_entry))
         else:

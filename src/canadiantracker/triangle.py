@@ -237,13 +237,24 @@ class UnknownProductErrorException(RuntimeError):
     pass
 
 
-class SkusInventory(Iterable):
-    def __init__(self, product: model.Product):
-        self._product = product
+class _SkusAndOptions:
+    def __init__(self, skus: list[model.Sku], options: list[model.SkuOption]):
+        self._skus = skus
+        self._options = options
 
-    @staticmethod
+    @property
+    def skus(self) -> list[model.Sku]:
+        return self._skus
+
+    @property
+    def options(self) -> list[model.SkuOption]:
+        return self._options
+
+
+def get_product_skus_and_options(
+    product: model.Product,
+) -> _SkusAndOptions | None:
     def _request_page(product_code: str) -> requests.Response:
-        """Fetch one product page."""
         headers = _base_headers.copy()
         headers["user-agent"] = _random_user_agent()
         return requests.get(
@@ -251,28 +262,40 @@ class SkusInventory(Iterable):
             headers=headers,
         )
 
-    def __iter__(self):
-        for ntry in range(5):
-            resp = SkusInventory._request_page(self._product.code)
-            if resp.status_code == 404:
-                raise NoSuchProductException
-            if resp.status_code not in (200, 206):
-                logger.error(f"Got status code {resp.status_code} on try {ntry}")
-                time.sleep(5)
-                continue
+    for ntry in range(5):
+        resp = _request_page(product.code)
+        if resp.status_code == 404:
+            raise NoSuchProductException
+        if resp.status_code not in (200, 206):
+            logger.error(f"Got status code {resp.status_code} on try {ntry}")
+            time.sleep(5)
+            continue
 
-            resp = resp.json()
-            # Some stale products didn't have a skus list in the response.  The
-            # CT website was broken for those, so we just ignore them.
-            if "skus" not in resp or resp["skus"] is None:
-                return
+        resp = resp.json()
+        # Some stale products didn't have a skus list in the response.  The
+        # CT website was broken for those, so we just ignore them.
+        if "skus" not in resp or resp["skus"] is None:
+            return None
 
-            for sku in resp["skus"]:
-                yield model.Sku(sku["code"], sku["formattedCode"])
+        skus: list[model.Sku] = []
 
-            return
+        for sku in resp["skus"]:
+            skus.append(model.Sku(sku["code"], sku["formattedCode"], sku["optionIds"]))
 
-        raise UnknownProductErrorException
+        options: list[model.SkuOption] = []
+        for option in resp["options"]:
+            values: list[model.SkuOptionValue] = []
+
+            for value in option["values"]:
+                values.append(model.SkuOptionValue(value["id"], value["value"] or ""))
+
+            options.append(
+                model.SkuOption(option["descriptor"], option["display"], values)
+            )
+
+        return _SkusAndOptions(skus, options)
+
+    raise UnknownProductErrorException
 
 
 class ProductLedger(Iterable):

@@ -90,6 +90,7 @@ async def one_product(
     request: Request, product_code: str
 ) -> Jinja2Templates.TemplateResponse:
     product = _repository.get_product_by_code(product_code)
+    print(product.sku_options)
     return _templates.TemplateResponse(
         "product.html", {"request": request, "product": product}
     )

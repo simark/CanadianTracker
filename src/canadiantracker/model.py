@@ -71,9 +71,10 @@ class Product:
 
 
 class Sku:
-    def __init__(self, code: str, formatted_code: str):
+    def __init__(self, code: str, formatted_code: str, option_ids: list[int]):
         self._code = code
         self._formatted_code = formatted_code
+        self._option_ids = option_ids
 
     @property
     def code(self) -> str:
@@ -82,6 +83,45 @@ class Sku:
     @property
     def formatted_code(self) -> str:
         return self._formatted_code
+
+    @property
+    def option_ids(self) -> list[int]:
+        return self._option_ids
+
+
+class SkuOption:
+    def __init__(self, descriptor: str, display: str, values: list[SkuOptionValue]):
+        assert type(descriptor) is str
+        assert type(display) is str
+        self._descriptor = descriptor
+        self._display = display
+        self._values = values
+
+    @property
+    def descriptor(self) -> str:
+        return self._descriptor
+
+    @property
+    def display(self) -> str:
+        return self._display
+
+    @property
+    def values(self) -> list[SkuOptionValue]:
+        return self._values
+
+
+class SkuOptionValue:
+    def __init__(self, id: int, value: str):
+        self._id = id
+        self._value = value
+
+    @property
+    def id(self) -> int:
+        return self._id
+
+    @property
+    def value(self) -> str:
+        return self._value
 
 
 class ProductInfoSample:

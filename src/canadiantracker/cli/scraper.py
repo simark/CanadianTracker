@@ -179,8 +179,15 @@ def scrape_skus(db_path: str, products: str | None) -> None:
     ) as products_wrapper:
         for i, product in enumerate(products_wrapper):
             try:
-                for sku in triangle.SkusInventory(product):
+                skus_and_options = triangle.get_product_skus_and_options(product)
+                if skus_and_options is None:
+                    continue
+
+                repository.set_sku_options(product, skus_and_options.options)
+
+                for sku in skus_and_options.skus:
                     repository.add_sku(product, sku)
+
             except triangle.NoSuchProductException:
                 logger.debug(f"Product {product} no longer exists")
             except triangle.UnknownProductErrorException:
