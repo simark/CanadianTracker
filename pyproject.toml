@@ -25,6 +25,7 @@ black = {version = "^22.3.0", allow-prereleases = true}
 flake8 = "^5.0.4"
 flake8-annotations = "^2.9.1"
 isort = "^5.10.1"
+types-SQLAlchemy = "^1.4.53.8"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

@@ -29,9 +29,11 @@ def repository(tmp_path: str) -> storage.ProductRepository:
     def do_upgrade(
         heads: tuple[str, ...] | tuple[()], mc: alembic.migration.MigrationContext
     ) -> list[alembic.migration.MigrationStep]:
+        script = mc.script
+        assert script is not None
         rev_scripts = reversed(
             list(
-                mc.script.iterate_revisions(
+                script.iterate_revisions(
                     lower="base",
                     upper=storage.ProductRepository.ALEMBIC_REVISION,
                 )
@@ -39,9 +41,7 @@ def repository(tmp_path: str) -> storage.ProductRepository:
         )
 
         return [
-            alembic.migration.MigrationStep.upgrade_from_script(
-                mc.script.revision_map, x
-            )
+            alembic.migration.MigrationStep.upgrade_from_script(script.revision_map, x)
             for x in rev_scripts
         ]
 
