@@ -177,7 +177,7 @@ class ProductInventory(Iterable):
             headers=_base_headers,
         )
 
-    def __iter__(self) -> Iterator[model.ProductListingEntry]:
+    def __iter__(self) -> Iterator[model.Product]:
         num_categories_scraped = 0
 
         for cat, level in self._categories.iter_preorder():
@@ -213,9 +213,7 @@ class ProductInventory(Iterable):
                     url = product["url"]
                     name = product["title"]
                     is_in_clearance = "CLEARANCE" in product["badges"]
-                    yield model.ProductListingEntry(
-                        code, name, is_in_clearance, url, skus
-                    )
+                    yield model.Product(code, name, is_in_clearance, url, skus)
 
                 if (
                     self._dev_max_pages_per_category != 0

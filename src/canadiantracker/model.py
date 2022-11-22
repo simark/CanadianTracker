@@ -36,7 +36,7 @@ class ProductInfo:
         return str(self.__dict__)
 
 
-class ProductListingEntry:
+class Product:
     def __init__(
         self, code: str, name: str, is_in_clearance: bool, url: str, skus: list[Sku]
     ):
