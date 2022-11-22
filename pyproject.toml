@@ -26,6 +26,7 @@ flake8 = "^5.0.4"
 flake8-annotations = "^2.9.1"
 isort = "^5.10.1"
 types-SQLAlchemy = "^1.4.53.8"
+pyright = "^1.1.280"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -38,3 +39,6 @@ ctserver = "canadiantracker.server:cli"
 
 [tool.isort]
 profile = "black"
+
+[tool.pyright]
+typeCheckingMode = "basic"
